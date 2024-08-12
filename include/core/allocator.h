@@ -28,7 +28,7 @@ namespace infini {
     // HINT: 可以使用一个 map 来存储 free block，key 为 block 的起始/结尾地址，value 为 block 的大小
     // =================================== 作业 ===================================
     // <start_addr, size>
-    std::map<size_t, size_t> mem_allocated;
+    map<size_t, size_t> mem_allocated;
 
   public:
     Allocator(Runtime runtime);
