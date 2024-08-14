@@ -28,8 +28,8 @@ namespace infini
         auto input_dim = A->getDims();
         // auto output_dim = input_dim;
         int rank = A->getRank();
-        std::vector<ShapeElem> output_dim(rank+1);
-        for(int i=0;i<rank;i++)
+        std::vector<ShapeElem> output_dim(input_dim.size());
+        for(int i=0;i<input_dim.size();i++)
         {
             output_dim[i] = input_dim[transposePermute[i]];
         }
