@@ -29,7 +29,7 @@ namespace infini
         auto output_dim = input_dim;
         int rank = A->getRank();
         
-        for(int i=0;i<rank;i++>)
+        for(int i=0;i<rank;i++)
         {
             output_dim[i] = input_dim[transposePermute[i]];
         }
