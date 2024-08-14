@@ -28,7 +28,7 @@ namespace infini
         auto input_dim = A->getDims();
         // auto output_dim = input_dim;
         int rank = A->getRank();
-        vector<Shape> output_dim(rank+1);
+        std::vector<ShapeElem> output_dim(rank+1);
         for(int i=0;i<rank;i++)
         {
             output_dim[i] = input_dim[transposePermute[i]];
@@ -38,7 +38,7 @@ namespace infini
         // REF: https://onnx.ai/onnx/operators/onnx__Transpose.html#transpose-21
         // =================================== 作业 ===================================
 
-        return output_dim;
+        return {{output_dim}};;
     }
 
     std::string TransposeObj::toString() const
