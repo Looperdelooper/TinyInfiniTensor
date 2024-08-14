@@ -29,12 +29,13 @@ namespace infini
         // auto output_dim = input_dim;
         int rank = A->getRank();
         std::vector<ShapeElem> output_dim(input_dim.size());
+        auto perm=this->getPermute();
         for(int i=0;i<input_dim.size();i++)
         {
-            output_dim[i] = input_dim[transposePermute[i]];
+            output_dim[i] = input_dim[perm[i]];
         }
 
-        
+
         // =================================== 作业 ===================================
         // TODO：修改 output_dim，返回正确的 transpose 后的 shape
         // REF: https://onnx.ai/onnx/operators/onnx__Transpose.html#transpose-21
