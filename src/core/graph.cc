@@ -106,6 +106,58 @@ namespace infini
         // 1. 去除冗余的算子（例如，两个相邻的算子都是 transpose 算子，且做的是相反的操作，可以将其全部删除）
         // 2. 合并算子（例如，矩阵乘算子中含有属性transA、transB，如果其输入存在transpose，且对最后两个维度做交换，就可以将transpose融入到矩阵乘算子的属性中去）
         // =================================== 作业 ===================================
+        auto sources = this->getInputs();
+        for (auto& tensor : sources) {
+            WRef<TensorObj> current = refs_to_wrefs<TensorObj>({tensor})[0];
+            while (current.lock()->getTargets().size()) {
+                if (current.lock()->getTargets()[0]->getOpType() == OpType::Transpose && 
+                    current.lock()->getTargets()[0]->getOutputs()[0]->getTargets().size()) {
+                    WRef<OperatorObj> next_op = 
+                        refs_to_wrefs<OperatorObj>({current.lock()->getTargets()[0]->getOutputs()[0]->getTargets()[0]})[0];
+                    if (next_op.lock()->getOpType() == OpType::Transpose) {
+                        auto current_op_perm = ((TransposeObj*)current.lock()->getTargets()[0].get())->getPermute();
+                        auto next_op_perm = ((TransposeObj*)next_op.lock().get())->getPermute();
+                        if (current_op_perm == next_op_perm) {
+                            auto new_target =next_op.lock()->getOutputs()[0]->getTargets()[0]; 
+                            new_target->removePredecessors(wrefs_to_refs<OperatorObj>({next_op})[0]);
+                            current.lock()->addTarget(new_target);
+                            new_target->replaceInput(next_op.lock()->getOutputs()[0], wrefs_to_refs<TensorObj>({current})[0]);
+
+                            this->removeTensor(next_op.lock()->getOutputs()[0]);
+                            this->removeTensor(current.lock()->getTargets()[0]->getOutputs()[0]);
+
+                            auto removed_target = current.lock()->getTargets()[0];
+                            current.lock()->removeTarget(removed_target);
+                            this->removeOperator(wrefs_to_refs<OperatorObj>({next_op})[0]);
+                            this->removeOperator(removed_target);
+                        }
+                    } else if (next_op.lock()->getOpType() == OpType::MatMul) {
+                        auto current_op_perm = ((TransposeObj*)current.lock()->getTargets()[0].get())->getPermute();
+                        if ((size_t)current_op_perm[current_op_perm.size() - 1] == current_op_perm.size() - 2 &&
+                            (size_t)current_op_perm[current_op_perm.size() - 2] == current_op_perm.size() - 1) {                            
+                            auto removed_target = current.lock()->getTargets()[0];
+                            auto new_target = removed_target->getOutputs()[0]->getTargets()[0];
+
+                            new_target->replaceInput(removed_target->getOutputs()[0], wrefs_to_refs<TensorObj>({current})[0]);
+                            if (new_target->inputs[0] == current.lock()) {
+                                MatmulObj* new_target_ptr = (MatmulObj*)new_target.get();
+                                new_target_ptr->setTransA(true);
+                            } else {
+                                MatmulObj* new_target_ptr = (MatmulObj*)new_target.get();
+                                new_target_ptr->setTransB(true);
+                            }
+                            new_target->removePredecessors(removed_target);
+                            current.lock()->removeTarget(removed_target);
+                            current.lock()->addTarget(new_target);
+
+                            this->removeTensor(removed_target->getOutputs()[0]);
+                            this->removeOperator(removed_target);
+                        }
+                    }
+                }
+                current = current.lock()->getTargets()[0]->getOutputs()[0];
+            }
+        }
     }
 
     Tensor GraphObj::getTensor(int fuid) const
@@ -152,6 +204,18 @@ namespace infini
         // TODO：利用 allocator 给计算图分配内存
         // HINT: 获取分配好的内存指针后，可以调用 tensor 的 setDataBlob 函数给 tensor 绑定内存
         // =================================== 作业 ===================================
+        std::unordered_map<TensorObj*, size_t> offsets;
+        for (auto& tensor: tensors) {
+            offsets[tensor.get()] = allocator.alloc(tensor->getBytes());
+        }
+
+        for (auto& tensor: tensors) {
+            tensor->setDataBlob(
+                make_ref<BlobObj>(
+                    tensor->runtime, static_cast<uint8_t*>(allocator.getPtr()) + offsets[tensor.get()]
+                )
+            );
+        }
 
         allocator.info();
     }
