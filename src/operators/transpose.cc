@@ -40,7 +40,7 @@ namespace infini
 
         return {{output_dim}};
     }
-
+    
     std::string TransposeObj::toString() const
     {
         std::ostringstream os;
